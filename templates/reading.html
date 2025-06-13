@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block title %}Speech Navigator: {{ session.filename }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.reading-text {
+    font-size: 1.2rem;
+    line-height: 1.8;
+    padding: 2rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.word {
+    padding: 2px 4px;
+    margin: 1px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.word.current {
+    background-color: #ffc107;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    animation: pulse 2s infinite;
+}
+
+.word.completed {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+.microphone-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: none;
+    font-size: 1.5rem;
+}
+
+.microphone-btn.listening {
+    background-color: #dc3545;
+    animation: pulse-red 1s infinite;
+}
+
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+.navigator-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-3">
+        <!-- Session Info -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">{{ session.filename }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-primary mb-0" id="currentWordNum">{{ current_index + 1 }}</h4>
+                        <small class="text-muted">Current</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-secondary mb-0">{{ session.total_words }}</h4>
+                        <small class="text-muted">Total</small>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="progress">
+                        <div class="progress-bar" id="progressBar" role="progressbar" 
+                             style="width: {{ (current_index / session.total_words * 100)|round(1) }}%">
+                            {{ (current_index / session.total_words * 100)|round(1) }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Speech Controls -->
+        <div class="card mb-3">
+            <div class="card-body text-center">
+                <button class="microphone-btn btn btn-primary mb-3" id="micBtn">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <div class="btn-group d-block mb-2">
+                    <button class="btn btn-success btn-sm" id="startBtn">Start</button>
+                    <button class="btn btn-warning btn-sm" id="pauseBtn" disabled>Pause</button>
+                    <button class="btn btn-secondary btn-sm" id="resetBtn">Reset</button>
+                </div>
+                <div id="speechStatus" class="alert alert-info mt-3" style="display: none;">
+                    <span id="statusText">Ready...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Speech Navigator -->
+        <div class="card navigator-card">
+            <div class="card-body text-center">
+                <h6 class="card-title">Speech Navigator</h6>
+                <div class="mb-3">
+                    <h4 id="timeElapsed">0:00</h4>
+                    <small>Time Elapsed</small>
+                </div>
+                <div class="mb-2">
+                    <button class="btn btn-sm btn-outline-light" id="skipBackBtn">
+                        <i class="fas fa-step-backward me-1"></i>Previous
+                    </button>
+                    <button class="btn btn-sm btn-outline-light" id="skipForwardBtn">
+                        <i class="fas fa-step-forward me-1"></i>Next
+                    </button>
+                </div>
+                <small class="text-light">Manual navigation</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Speech Text</h5>
+            </div>
+            <div class="card-body">
+                <div class="reading-text" id="readingText">
+                    {% for word in words %}
+                        <span class="word" data-index="{{ loop.index0 }}" 
+                              {% if loop.index0 < current_index %}data-status="completed"
+                              {% elif loop.index0 == current_index %}data-status="current"{% endif %}>{{ word }}</span>
+                    {% endfor %}
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <h6><i class="fas fa-info-circle me-2"></i>Speech Navigator:</h6>
+                    <ul class="mb-0">
+                        <li>Click <strong>Start</strong> to begin speech tracking</li>
+                        <li>Speak naturally - the system will follow along</li>
+                        <li>Add sentences or skip words - it will adapt</li>
+                        <li>Use <strong>Previous/Next</strong> buttons for manual control</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let sessionId = '{{ session.id }}';
+let words = {{ words|tojson }};
+let currentIndex = {{ current_index }};
+let isListening = false;
+let recognition = null;
+let isPaused = false;
+let startTime = null;
+let lastProcessTime = 0;
+let processingThrottle = 150; // Minimum ms between processing speech
+
+function initializeSpeechRecognition() {
+    if ('webkitSpeechRecognition' in window) {
+        recognition = new webkitSpeechRecognition();
+    } else if ('SpeechRecognition' in window) {
+        recognition = new SpeechRecognition();
+    } else {
+        alert('Speech recognition not supported. Please use Chrome or Edge.');
+        return false;
+    }
+    
+    recognition.continuous = true;
+    recognition.interimResults = true;  // Enable interim results for faster response
+    recognition.lang = 'en-US';
+    recognition.maxAlternatives = 1;
+    
+    recognition.onstart = function() {
+        isListening = true;
+        updateMicrophoneButton();
+        updateSpeechStatus('Listening...', 'info');
+        if (!startTime) startTime = Date.now();
+    };
+    
+    recognition.onresult = function(event) {
+        // Process both interim and final results for responsiveness
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const result = event.results[i];
+            const spokenText = result[0].transcript.trim();
+            
+            if (spokenText.length > 0) {
+                processSpokenText(spokenText);
+            }
+        }
+    };
+    
+    recognition.onend = function() {
+        isListening = false;
+        updateMicrophoneButton();
+        if (!isPaused) {
+            setTimeout(startListening, 500);
+        }
+    };
+    
+    return true;
+}
+
+function processSpokenText(spoken) {
+    // Throttle processing to prevent rapid jumping
+    const now = Date.now();
+    if (now - lastProcessTime < processingThrottle) {
+        return;
+    }
+    lastProcessTime = now;
+    
+    const spokenWords = spoken.toLowerCase().split(' ').filter(word => word.length > 1);
+    if (spokenWords.length === 0) return;
+    
+    // Common words that shouldn't cause large jumps
+    const commonWords = ['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'up', 'about', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'among', 'under', 'over', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them'];
+    
+    // Look for specific word matches - ONLY advance if we find matches
+    let bestMatch = -1;
+    let bestScore = 0;
+    let matchesFound = [];
+    
+    // Search in a reasonable window ahead (but also check current position)
+    for (let i = currentIndex; i < Math.min(currentIndex + 10, words.length); i++) {
+        const word = words[i].toLowerCase().replace(/[^\w\s]/gi, '');
+        if (word.length < 2) continue;
+        
+        for (const spokenWord of spokenWords) {
+            if (word === spokenWord || word.includes(spokenWord) || spokenWord.includes(word)) {
+                // Calculate score based on match quality and distance
+                let score = word === spokenWord ? 3 : (word.includes(spokenWord) ? 2 : 1);
+                
+                // Reduce score for common words to prevent jumping on "the", "and", etc.
+                if (commonWords.includes(word)) {
+                    score *= 0.3;
+                }
+                
+                // STRONG preference for closer matches - heavily penalize distance
+                const distance = i - currentIndex;
+                if (distance === 0) {
+                    score *= 1.5; // Boost current position
+                } else if (distance === 1) {
+                    score *= 1.2; // Boost next word
+                } else if (distance > 1) {
+                    score *= Math.pow(0.5, distance - 1); // Exponentially reduce distant matches
+                }
+                
+                // Store this match
+                matchesFound.push({ index: i, score: score, word: word, spokenWord: spokenWord, distance: distance });
+                
+                if (score > bestScore) {
+                    bestMatch = i;
+                    bestScore = score;
+                }
+            }
+        }
+    }
+    
+    // Only advance if we found a decent match
+    if (bestMatch !== -1 && bestScore > 0.8) {
+        // Found a match worth following
+        let targetIndex = bestMatch;
+        
+        // If the match is at current position, advance by 1
+        if (targetIndex === currentIndex) {
+            targetIndex = currentIndex + 1;
+        }
+        
+        // CRITICAL: Never jump more than 1-2 words at a time to prevent skipping
+        const distance = targetIndex - currentIndex;
+        if (distance > 2) {
+            targetIndex = currentIndex + 1; // Just advance by 1 if match is too far
+        }
+        
+        targetIndex = Math.min(targetIndex, words.length - 1);
+        moveToWord(targetIndex);
+        
+        const matchInfo = matchesFound.find(m => m.index === bestMatch);
+        updateSpeechStatus(`Matched: "${matchInfo?.word || 'word'}" (distance: ${matchInfo?.distance || 0})`, 'success');
+    } else {
+        // No good match found - don't advance automatically
+        updateSpeechStatus('Listening... (no match found)', 'warning');
+    }
+}
+
+function moveToWord(newIndex) {
+    if (newIndex >= 0 && newIndex < words.length) {
+        // Mark previous words as completed
+        for (let i = currentIndex; i < newIndex; i++) {
+            const wordEl = document.querySelector(`[data-index="${i}"]`);
+            if (wordEl) {
+                wordEl.classList.remove('current');
+                wordEl.classList.add('completed');
+            }
+        }
+        
+        currentIndex = newIndex;
+        highlightCurrentWord();
+        updateProgress();
+        
+        // Check if we've reached the end
+        if (currentIndex >= words.length - 1) {
+            finishReading();
+        }
+    }
+}
+
+function finishReading() {
+    // Stop speech recognition
+    isPaused = true;
+    stopListening();
+    
+    // Update button states
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('pauseBtn').disabled = true;
+    
+    // Stop the timer by clearing startTime
+    startTime = null;
+    
+    // Show completion message
+    updateSpeechStatus('Reading completed! 🎉', 'success');
+    
+    // Mark the last word as completed
+    const lastWord = document.querySelector(`[data-index="${words.length - 1}"]`);
+    if (lastWord) {
+        lastWord.classList.remove('current');
+        lastWord.classList.add('completed');
+    }
+    
+    // Update microphone button to show it's off
+    updateMicrophoneButton();
+}
+
+function startListening() {
+    if (recognition && !isListening && !isPaused) {
+        recognition.start();
+    }
+}
+
+function stopListening() {
+    if (recognition && isListening) {
+        recognition.stop();
+    }
+}
+
+function updateMicrophoneButton() {
+    const micBtn = document.getElementById('micBtn');
+    micBtn.classList.toggle('listening', isListening);
+}
+
+function updateSpeechStatus(message, type) {
+    const statusDiv = document.getElementById('speechStatus');
+    const statusText = document.getElementById('statusText');
+    statusDiv.className = `alert alert-${type} mt-3`;
+    statusText.textContent = message;
+    statusDiv.style.display = 'block';
+}
+
+function highlightCurrentWord() {
+    document.querySelectorAll('.word').forEach(word => word.classList.remove('current'));
+    const currentWord = document.querySelector(`[data-index="${currentIndex}"]`);
+    if (currentWord) {
+        currentWord.classList.add('current');
+        currentWord.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+function updateProgress() {
+    const progress = (currentIndex / words.length) * 100;
+    const progressBar = document.getElementById('progressBar');
+    const currentWordNum = document.getElementById('currentWordNum');
+    
+    progressBar.style.width = progress + '%';
+    progressBar.textContent = Math.round(progress) + '%';
+    currentWordNum.textContent = currentIndex + 1;
+}
+
+function updateTimer() {
+    if (startTime) {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        document.getElementById('timeElapsed').textContent = 
+            `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (!initializeSpeechRecognition()) return;
+    
+    document.getElementById('startBtn').addEventListener('click', function() {
+        isPaused = false;
+        this.disabled = true;
+        document.getElementById('pauseBtn').disabled = false;
+        startListening();
+    });
+    
+    document.getElementById('pauseBtn').addEventListener('click', function() {
+        isPaused = true;
+        this.disabled = true;
+        document.getElementById('startBtn').disabled = false;
+        stopListening();
+    });
+    
+    document.getElementById('resetBtn').addEventListener('click', function() {
+        if (confirm('Reset to beginning?')) {
+            currentIndex = 0;
+            startTime = null;
+            document.querySelectorAll('.word').forEach(word => {
+                word.classList.remove('current', 'completed');
+            });
+            highlightCurrentWord();
+            updateProgress();
+        }
+    });
+    
+    document.getElementById('skipBackBtn').addEventListener('click', function() {
+        moveToWord(Math.max(0, currentIndex - 5));
+    });
+    
+    document.getElementById('skipForwardBtn').addEventListener('click', function() {
+        moveToWord(Math.min(words.length - 1, currentIndex + 5));
+    });
+    
+    document.getElementById('micBtn').addEventListener('click', function() {
+        if (isListening) stopListening();
+        else if (!isPaused) startListening();
+    });
+    
+    highlightCurrentWord();
+    setInterval(updateTimer, 1000);
+});
+</script>
+{% endblock %} 

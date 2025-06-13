@@ -1,0 +1,510 @@
+{% extends "base.html" %}
+
+{% block title %}Reading: {{ session.filename }} - Text Reading Assistant{% endblock %}
+
+{% block extra_head %}
+<style>
+    .reading-text {
+        font-size: 1.2rem;
+        line-height: 1.8;
+        padding: 2rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .word {
+        padding: 2px 4px;
+        margin: 1px;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .word.current {
+        background-color: #ffc107;
+        font-weight: bold;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        animation: pulse 1s infinite;
+    }
+    
+    .word.completed {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .word.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        animation: shake 0.5s;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+    
+    .control-panel {
+        position: sticky;
+        top: 20px;
+        z-index: 100;
+    }
+    
+    .microphone-btn {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: none;
+        font-size: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .microphone-btn.listening {
+        background-color: #dc3545;
+        animation: pulse-red 1s infinite;
+    }
+    
+    @keyframes pulse-red {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Control Panel -->
+    <div class="col-lg-3">
+        <div class="control-panel">
+            <!-- Session Info -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-text me-2"></i>{{ session.filename }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h4 class="text-primary mb-0" id="currentWordNum">{{ current_index + 1 }}</h4>
+                                <small class="text-muted">Current</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-secondary mb-0">{{ session.total_words }}</h4>
+                            <small class="text-muted">Total</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="mt-3">
+                        <div class="progress">
+                            <div class="progress-bar" id="progressBar" role="progressbar" 
+                                 style="width: {{ (current_index / session.total_words * 100)|round(1) }}%">
+                                {{ (current_index / session.total_words * 100)|round(1) }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Speech Controls -->
+            <div class="card mb-3">
+                <div class="card-body text-center">
+                    <button class="microphone-btn btn btn-primary mb-3" id="micBtn">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <div>
+                        <div class="btn-group d-block mb-2">
+                            <button class="btn btn-success btn-sm" id="startBtn">
+                                <i class="fas fa-play me-1"></i>Start
+                            </button>
+                            <button class="btn btn-warning btn-sm" id="pauseBtn" disabled>
+                                <i class="fas fa-pause me-1"></i>Pause
+                            </button>
+                            <button class="btn btn-secondary btn-sm" id="resetBtn">
+                                <i class="fas fa-redo me-1"></i>Reset
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Speech Status -->
+                    <div id="speechStatus" class="alert alert-info" style="display: none;">
+                        <i class="fas fa-ear-listen me-2"></i>
+                        <span id="statusText">Ready to listen...</span>
+                    </div>
+                    
+                    <!-- Last Recognized Word -->
+                    <div id="recognizedWord" class="mt-2" style="display: none;">
+                        <small class="text-muted">You said:</small><br>
+                        <strong id="recognizedText"></strong>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Speech Navigation -->
+            <div class="card stats-card">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Speech Navigator</h6>
+                    <div class="mb-3">
+                        <h4 id="timeElapsed">0:00</h4>
+                        <small>Time Elapsed</small>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-sm btn-outline-light" id="skipBackBtn">
+                            <i class="fas fa-step-backward me-1"></i>Previous
+                        </button>
+                        <button class="btn btn-sm btn-outline-light" id="skipForwardBtn">
+                            <i class="fas fa-step-forward me-1"></i>Next
+                        </button>
+                    </div>
+                    <small class="text-light">Manual navigation controls</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Reading Text -->
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-book-open me-2"></i>Reading Text
+                </h5>
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary btn-sm" id="fontSizeDown">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" id="fontSizeUp">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="reading-text" id="readingText">
+                    {% for word in words %}
+                        <span class="word" data-index="{{ loop.index0 }}" 
+                              {% if loop.index0 < current_index %}data-status="completed"{% elif loop.index0 == current_index %}data-status="current"{% endif %}>{{ word }}</span>
+                    {% endfor %}
+                </div>
+                
+                <!-- Reading Instructions -->
+                <div class="alert alert-info mt-3">
+                    <h6><i class="fas fa-info-circle me-2"></i>How to use:</h6>
+                    <ul class="mb-0">
+                        <li>Click <strong>Start</strong> to begin speech recognition</li>
+                        <li>Read the highlighted word aloud</li>
+                        <li>The system will automatically advance to the next word</li>
+                        <li>If you make an error, the word will turn red and you can try again</li>
+                        <li>Use the microphone button to manually control listening</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Completion Modal -->
+<div class="modal fade" id="completionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-trophy me-2"></i>Reading Complete!
+                </h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-check-circle fa-4x text-success"></i>
+                </div>
+                <h4>Congratulations!</h4>
+                <p>You've completed reading <strong>{{ session.filename }}</strong></p>
+                
+                <div class="row mt-4">
+                    <div class="col-4">
+                        <h3 class="text-primary" id="finalAccuracy">-</h3>
+                        <small class="text-muted">Accuracy</small>
+                    </div>
+                    <div class="col-4">
+                        <h3 class="text-success" id="finalCorrect">-</h3>
+                        <small class="text-muted">Correct Words</small>
+                    </div>
+                    <div class="col-4">
+                        <h3 class="text-warning" id="finalErrors">-</h3>
+                        <small class="text-muted">Total Errors</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-home me-2"></i>Back to Home
+                </a>
+                <button type="button" class="btn btn-secondary" id="reviewBtn">
+                    <i class="fas fa-eye me-2"></i>Review Session
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Global variables
+let sessionId = '{{ session.id }}';
+let words = {{ words|tojson }};
+let currentIndex = {{ current_index }};
+let isListening = false;
+let recognition = null;
+let isPaused = false;
+let startTime = null;
+
+// Initialize speech recognition
+function initializeSpeechRecognition() {
+    if ('webkitSpeechRecognition' in window) {
+        recognition = new webkitSpeechRecognition();
+    } else if ('SpeechRecognition' in window) {
+        recognition = new SpeechRecognition();
+    } else {
+        alert('Speech recognition is not supported in your browser. Please use Chrome or Edge.');
+        return false;
+    }
+    
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    
+    recognition.onstart = function() {
+        isListening = true;
+        updateMicrophoneButton();
+        updateSpeechStatus('Listening...', 'info');
+    };
+    
+    recognition.onresult = function(event) {
+        const spokenWord = event.results[0][0].transcript.trim().toLowerCase();
+        const confidence = event.results[0][0].confidence;
+        const expectedWord = words[currentIndex].toLowerCase().replace(/[^\w\s]/gi, '');
+        
+        processSpokenWord(spokenWord, expectedWord, confidence);
+    };
+    
+    recognition.onerror = function(event) {
+        console.error('Speech recognition error:', event.error);
+        updateSpeechStatus('Error: ' + event.error, 'danger');
+        isListening = false;
+        updateMicrophoneButton();
+    };
+    
+    recognition.onend = function() {
+        isListening = false;
+        updateMicrophoneButton();
+        if (!isPaused && currentIndex < words.length - 1) {
+            // Automatically restart listening for next word
+            setTimeout(startListening, 500);
+        }
+    };
+    
+    return true;
+}
+
+function processSpokenWord(spoken, expected, confidence) {
+    // For speech tracking, try to find the spoken word in the text
+    // This allows for flexible navigation during speeches
+    const spokenWords = spoken.split(' ');
+    
+    // Look for any of the spoken words in the remaining text
+    let foundIndex = -1;
+    for (let i = currentIndex; i < words.length; i++) {
+        const word = words[i].toLowerCase().replace(/[^\w\s]/gi, '');
+        if (spokenWords.some(sw => word.includes(sw.toLowerCase()) || sw.toLowerCase().includes(word))) {
+            foundIndex = i;
+            break;
+        }
+    }
+    
+    if (foundIndex !== -1) {
+        // Jump to found word
+        moveToWord(foundIndex);
+        updateSpeechStatus('Tracking...', 'success');
+    } else {
+        // If not found, just advance one word (for added content/mistakes)
+        moveToWord(currentIndex + 1);
+        updateSpeechStatus('Continuing...', 'info');
+    }
+}
+
+function startListening() {
+    if (recognition && !isListening && !isPaused) {
+        recognition.start();
+    }
+}
+
+function stopListening() {
+    if (recognition && isListening) {
+        recognition.stop();
+        isListening = false;
+        updateMicrophoneButton();
+    }
+}
+
+function updateMicrophoneButton() {
+    const micBtn = document.getElementById('micBtn');
+    if (isListening) {
+        micBtn.classList.add('listening');
+        micBtn.innerHTML = '<i class="fas fa-stop"></i>';
+    } else {
+        micBtn.classList.remove('listening');
+        micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+    }
+}
+
+function updateSpeechStatus(message, type) {
+    const statusDiv = document.getElementById('speechStatus');
+    const statusText = document.getElementById('statusText');
+    
+    statusDiv.className = `alert alert-${type}`;
+    statusText.textContent = message;
+    statusDiv.style.display = 'block';
+    
+    // Auto-hide after 3 seconds for success messages
+    if (type === 'success') {
+        setTimeout(() => {
+            statusDiv.style.display = 'none';
+        }, 3000);
+    }
+}
+
+function highlightCurrentWord() {
+    // Remove previous highlighting
+    document.querySelectorAll('.word').forEach(word => {
+        word.classList.remove('current');
+    });
+    
+    // Highlight current word
+    const currentWord = document.querySelector(`[data-index="${currentIndex}"]`);
+    if (currentWord) {
+        currentWord.classList.add('current');
+        
+        // Scroll to current word
+        currentWord.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+function updateProgress() {
+    const progress = (currentIndex / words.length) * 100;
+    const progressBar = document.getElementById('progressBar');
+    const currentWordNum = document.getElementById('currentWordNum');
+    
+    progressBar.style.width = progress + '%';
+    progressBar.textContent = Math.round(progress) + '%';
+    currentWordNum.textContent = currentIndex + 1;
+}
+
+function updateStats() {
+    document.getElementById('correctCount').textContent = correctCount;
+    document.getElementById('errorCount').textContent = errorCount;
+    
+    const total = correctCount + errorCount;
+    const accuracy = total > 0 ? Math.round((correctCount / total) * 100) : 100;
+    document.getElementById('accuracy').textContent = accuracy + '%';
+}
+
+function completeSession() {
+    stopListening();
+    
+    fetch(`/api/sessions/${sessionId}/complete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show completion modal with statistics
+            document.getElementById('finalAccuracy').textContent = data.statistics.accuracy + '%';
+            document.getElementById('finalCorrect').textContent = data.statistics.correct_words;
+            document.getElementById('finalErrors').textContent = data.statistics.total_attempts - data.statistics.correct_words;
+            
+            new bootstrap.Modal(document.getElementById('completionModal')).show();
+        }
+    })
+    .catch(error => {
+        console.error('Error completing session:', error);
+    });
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    if (!initializeSpeechRecognition()) {
+        return;
+    }
+    
+    // Control buttons
+    document.getElementById('startBtn').addEventListener('click', function() {
+        isPaused = false;
+        this.disabled = true;
+        document.getElementById('pauseBtn').disabled = false;
+        startListening();
+        updateSpeechStatus('Reading session started!', 'success');
+    });
+    
+    document.getElementById('pauseBtn').addEventListener('click', function() {
+        isPaused = true;
+        this.disabled = true;
+        document.getElementById('startBtn').disabled = false;
+        stopListening();
+        updateSpeechStatus('Reading session paused', 'warning');
+    });
+    
+    document.getElementById('resetBtn').addEventListener('click', function() {
+        if (confirm('Are you sure you want to reset your progress?')) {
+            location.reload();
+        }
+    });
+    
+    document.getElementById('micBtn').addEventListener('click', function() {
+        if (isListening) {
+            stopListening();
+        } else if (!isPaused) {
+            startListening();
+        }
+    });
+    
+    // Font size controls
+    document.getElementById('fontSizeUp').addEventListener('click', function() {
+        const textDiv = document.getElementById('readingText');
+        const currentSize = parseFloat(getComputedStyle(textDiv).fontSize);
+        textDiv.style.fontSize = (currentSize + 2) + 'px';
+    });
+    
+    document.getElementById('fontSizeDown').addEventListener('click', function() {
+        const textDiv = document.getElementById('readingText');
+        const currentSize = parseFloat(getComputedStyle(textDiv).fontSize);
+        if (currentSize > 12) {
+            textDiv.style.fontSize = (currentSize - 2) + 'px';
+        }
+    });
+    
+    // Initialize UI
+    highlightCurrentWord();
+    updateProgress();
+    updateStats();
+});
+</script>
+{% endblock %} 

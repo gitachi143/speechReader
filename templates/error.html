@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Error - Text Reading Assistant{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <div class="card border-danger">
+            <div class="card-body">
+                <div class="mb-4">
+                    <i class="fas fa-exclamation-triangle fa-4x text-danger"></i>
+                </div>
+                <h2 class="card-title text-danger">Oops! Something went wrong</h2>
+                <p class="card-text text-muted">{{ error }}</p>
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-home me-2"></i>Go Home
+                    </a>
+                    <button onclick="history.back()" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Go Back
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
