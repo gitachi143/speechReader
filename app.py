@@ -110,9 +110,13 @@ def index():
 def upload_file():
     """Handle file upload and create new reading session."""
     try:
-        # Skip database operations on Vercel
+        # For Vercel demo, redirect to demo session
         if os.environ.get('VERCEL'):
-            return jsonify({'error': 'File upload not available on Vercel deployment'}), 400
+            return jsonify({
+                'success': True,
+                'session_id': 'demo-session',
+                'redirect_url': url_for('reading_session', session_id='demo-session')
+            })
             
         if 'file' not in request.files:
             return jsonify({'error': 'No file selected'}), 400
@@ -155,9 +159,13 @@ def upload_file():
 def upload_text():
     """Handle direct text input and create new reading session."""
     try:
-        # Skip database operations on Vercel
+        # For Vercel demo, redirect to demo session
         if os.environ.get('VERCEL'):
-            return jsonify({'error': 'Text upload not available on Vercel deployment'}), 400
+            return jsonify({
+                'success': True,
+                'session_id': 'demo-session',
+                'redirect_url': url_for('reading_session', session_id='demo-session')
+            })
             
         data = request.get_json()
         

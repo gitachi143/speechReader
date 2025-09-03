@@ -11,7 +11,11 @@
                 <i class="fas fa-book-reader me-3"></i>Text Reading Assistant
             </h1>
             <p class="lead text-muted">
-                Upload text files and read with real-time highlighting and speech recognition feedback.
+                {% if config.get('VERCEL') %}
+                    Demo version: Try the speech recognition with sample text. Upload and save features are disabled on this deployment.
+                {% else %}
+                    Upload text files and read with real-time highlighting and speech recognition feedback.
+                {% endif %}
             </p>
         </div>
 
@@ -56,7 +60,7 @@ The quick brown fox jumps over the lazy dog. This sentence contains every letter
                             
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-primary btn-lg" id="pasteBtn">
-                                    <i class="fas fa-play me-2"></i>Start Reading Session
+                                    <i class="fas fa-play me-2"></i>{% if config.get('VERCEL') %}Try Demo{% else %}Start Reading Session{% endif %}
                                 </button>
                             </div>
                         </form>
@@ -75,7 +79,7 @@ The quick brown fox jumps over the lazy dog. This sentence contains every letter
                             
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-primary btn-lg" id="uploadBtn">
-                                    <i class="fas fa-cloud-upload-alt me-2"></i>Upload & Start Reading
+                                    <i class="fas fa-cloud-upload-alt me-2"></i>{% if config.get('VERCEL') %}Try Demo{% else %}Upload & Start Reading{% endif %}
                                 </button>
                             </div>
                         </form>
