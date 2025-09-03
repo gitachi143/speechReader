@@ -63,6 +63,4 @@ Run tests with:
 pytest
 ```
 
-## License
-
-MIT License 
+ 
