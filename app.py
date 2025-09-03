@@ -71,7 +71,7 @@ class ReadingSession(db.Model):
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
             'total_words': self.total_words,
             'current_word_index': self.current_word_index,
-            'progress_percentage': round((self.current_word_index / self.total_words) * 100, 2) if self.total_words > 0 else 0
+            'progress_percentage': round(((self.current_word_index + 1) / self.total_words) * 100, 2) if self.total_words > 0 else 0
         }
 
 class ReadingProgress(db.Model):
@@ -234,7 +234,7 @@ def update_progress(session_id):
         return jsonify({
             'success': True,
             'is_correct': is_correct,
-            'progress_percentage': round((word_index / session.total_words) * 100, 2)
+            'progress_percentage': round(((word_index + 1) / session.total_words) * 100, 2)
         })
         
     except Exception as e:

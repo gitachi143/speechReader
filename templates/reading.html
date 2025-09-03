@@ -88,8 +88,8 @@
                 <div class="mt-3">
                     <div class="progress">
                         <div class="progress-bar" id="progressBar" role="progressbar" 
-                             style="width: {{ (current_index / session.total_words * 100)|round(1) }}%">
-                            {{ (current_index / session.total_words * 100)|round(1) }}%
+                             style="width: {{ ((current_index + 1) / session.total_words * 100)|round(1) }}%">
+                            {{ ((current_index + 1) / session.total_words * 100)|round(1) }}%
                         </div>
                     </div>
                 </div>
@@ -147,16 +147,7 @@
                               {% elif loop.index0 == current_index %}data-status="current"{% endif %}>{{ word }}</span>
                     {% endfor %}
                 </div>
-                
-                <div class="alert alert-info mt-3">
-                    <h6><i class="fas fa-info-circle me-2"></i>Speech Navigator:</h6>
-                    <ul class="mb-0">
-                        <li>Click <strong>Start</strong> to begin speech tracking</li>
-                        <li>Speak naturally - the system will follow along</li>
-                        <li>Add sentences or skip words - it will adapt</li>
-                        <li>Use <strong>Previous/Next</strong> buttons for manual control</li>
-                    </ul>
-                </div>
+
             </div>
         </div>
     </div>
@@ -385,7 +376,8 @@ function highlightCurrentWord() {
 }
 
 function updateProgress() {
-    const progress = (currentIndex / words.length) * 100;
+    // Fix off-by-one error: when at last word, should show 100%
+    const progress = ((currentIndex + 1) / words.length) * 100;
     const progressBar = document.getElementById('progressBar');
     const currentWordNum = document.getElementById('currentWordNum');
     

@@ -123,7 +123,7 @@ The quick brown fox jumps over the lazy dog. This sentence contains every letter
                                 <div class="mt-1">
                                     <small class="text-info">
                                         Progress: {{ session.current_word_index }}/{{ session.total_words }} words
-                                        ({{ "%.1f"|format((session.current_word_index / session.total_words * 100) if session.total_words > 0 else 0) }}%)
+                                        ({{ "%.1f"|format(((session.current_word_index + 1) / session.total_words * 100) if session.total_words > 0 else 0) }}%)
                                     </small>
                                 </div>
                             </div>
@@ -142,38 +142,23 @@ The quick brown fox jumps over the lazy dog. This sentence contains every letter
         {% endif %}
 
         <!-- Features Section -->
-        <div class="row mt-5">
-            <div class="col-md-4">
-                <div class="text-center">
-                    <div class="feature-icon">
-                        <i class="fas fa-highlight fa-3x text-primary mb-3"></i>
-                    </div>
-                    <h5>Real-time Highlighting</h5>
-                    <p class="text-muted">
-                        Words are highlighted as you progress through the text, keeping you focused and on track.
-                    </p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="text-center">
-                    <div class="feature-icon">
-                        <i class="fas fa-microphone fa-3x text-primary mb-3"></i>
-                    </div>
-                    <h5>Speech Recognition</h5>
-                    <p class="text-muted">
-                        Advanced speech recognition tracks your reading and provides instant feedback on accuracy.
-                    </p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="text-center">
-                    <div class="feature-icon">
-                        <i class="fas fa-chart-line fa-3x text-primary mb-3"></i>
-                    </div>
-                    <h5>Progress Tracking</h5>
-                    <p class="text-muted">
-                        Detailed analytics help you understand your reading patterns and improve over time.
-                    </p>
+        <div class="mt-5">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-3">
+                            <h5 class="mb-2"><i class="fas fa-circle text-primary me-2" style="font-size: 0.5rem;"></i>Real-time Highlighting</h5>
+                            <p class="text-muted mb-0 ms-3">Words are highlighted as you progress through the text, keeping you focused and on track.</p>
+                        </li>
+                        <li class="mb-3">
+                            <h5 class="mb-2"><i class="fas fa-circle text-primary me-2" style="font-size: 0.5rem;"></i>Speech Recognition</h5>
+                            <p class="text-muted mb-0 ms-3">Advanced speech recognition tracks your reading and provides instant feedback on accuracy.</p>
+                        </li>
+                        <li class="mb-0">
+                            <h5 class="mb-2"><i class="fas fa-circle text-primary me-2" style="font-size: 0.5rem;"></i>Progress Tracking</h5>
+                            <p class="text-muted mb-0 ms-3">Detailed analytics help you understand your reading patterns and improve over time.</p>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
