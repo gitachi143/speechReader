@@ -43,8 +43,9 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 db = SQLAlchemy(app)
 CORS(app)  # Enable CORS for frontend-backend communication
 
-# Ensure upload directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# Ensure upload directory exists (only in development)
+if not os.environ.get('VERCEL'):
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Database Models - Following SQLAlchemy best practices
 class ReadingSession(db.Model):
@@ -93,6 +94,10 @@ class ReadingProgress(db.Model):
 def index():
     """Main page - Upload and select text files."""
     try:
+        # Skip database operations on Vercel
+        if os.environ.get('VERCEL'):
+            return render_template('index.html', recent_sessions=[])
+        
         recent_sessions = ReadingSession.query.order_by(ReadingSession.created_at.desc()).limit(5).all()
         # Only pass sessions if there are any
         sessions_to_show = recent_sessions if recent_sessions else []
@@ -105,6 +110,10 @@ def index():
 def upload_file():
     """Handle file upload and create new reading session."""
     try:
+        # Skip database operations on Vercel
+        if os.environ.get('VERCEL'):
+            return jsonify({'error': 'File upload not available on Vercel deployment'}), 400
+            
         if 'file' not in request.files:
             return jsonify({'error': 'No file selected'}), 400
         
@@ -146,6 +155,10 @@ def upload_file():
 def upload_text():
     """Handle direct text input and create new reading session."""
     try:
+        # Skip database operations on Vercel
+        if os.environ.get('VERCEL'):
+            return jsonify({'error': 'Text upload not available on Vercel deployment'}), 400
+            
         data = request.get_json()
         
         if not data or not data.get('text'):
@@ -188,6 +201,21 @@ def upload_text():
 def reading_session(session_id):
     """Display reading interface for a specific session."""
     try:
+        # For Vercel demo, use sample text
+        if os.environ.get('VERCEL'):
+            sample_text = "The quick brown fox jumps over the lazy dog. This is a sample text for demonstration purposes. You can practice reading this text with speech recognition."
+            words = sample_text.split()
+            session = type('obj', (object,), {
+                'id': 'demo-session',
+                'filename': 'Demo Text',
+                'text_content': sample_text,
+                'total_words': len(words)
+            })
+            return render_template('reading.html', 
+                             session=session, 
+                             words=words,
+                             current_index=0)
+        
         session = ReadingSession.query.get_or_404(session_id)
         words = session.text_content.split()
         
@@ -203,6 +231,10 @@ def reading_session(session_id):
 def update_progress(session_id):
     """API endpoint to update reading progress."""
     try:
+        # Skip database operations on Vercel
+        if os.environ.get('VERCEL'):
+            return jsonify({'error': 'Progress tracking not available on Vercel deployment'}), 400
+            
         data = request.get_json()
         session_id = data.get('session_id')
         word_index = data.get('word_index')
@@ -245,6 +277,10 @@ def update_progress(session_id):
 def complete_session(session_id):
     """Mark a reading session as completed."""
     try:
+        # Skip database operations on Vercel
+        if os.environ.get('VERCEL'):
+            return jsonify({'error': 'Session completion not available on Vercel deployment'}), 400
+            
         session = ReadingSession.query.get_or_404(session_id)
         session.completed_at = datetime.utcnow()
         db.session.commit()
@@ -304,11 +340,16 @@ def internal_error(error):
 def create_tables():
     """Create database tables."""
     with app.app_context():
-        db.create_all()
-        logger.info("Database tables created successfully")
+        try:
+            db.create_all()
+            logger.info("Database tables created successfully")
+        except Exception as e:
+            logger.warning(f"Database initialization warning: {str(e)}")
+            # Continue without database in serverless environment
 
-# Initialize database
-create_tables()
+# Initialize database (only in development)
+if not os.environ.get('VERCEL'):
+    create_tables()
 
 if __name__ == '__main__':
     # Development server - Never use in production
