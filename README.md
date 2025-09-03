@@ -1,6 +1,6 @@
 # Text Reading Assistant
 
-A web application that helps users practice reading with speech recognition. Built with Flask and the Web Speech API.
+A web application that helps users practice reading or keep track of their speech while speaking with speech recognition. Built with Flask and the Web Speech API.
 
 ## What it does
 
