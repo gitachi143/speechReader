@@ -357,14 +357,18 @@ function highlightCurrentWord() {
 }
 
 function updateProgress() {
-    // Fix off-by-one error: when at last word, should show 100%
     const progress = ((currentIndex + 1) / words.length) * 100;
     const progressBar = document.getElementById('progressBar');
     const currentWordNum = document.getElementById('currentWordNum');
     
-    progressBar.style.width = progress + '%';
-    progressBar.textContent = Math.round(progress) + '%';
-    currentWordNum.textContent = currentIndex + 1;
+    if (progressBar && currentWordNum) {
+        progressBar.style.width = Math.round(progress) + '%';
+        progressBar.textContent = Math.round(progress) + '%';
+        currentWordNum.textContent = currentIndex + 1;
+        console.log('Progress updated:', Math.round(progress) + '%', 'Word:', currentIndex + 1);
+    } else {
+        console.error('Progress elements not found');
+    }
 }
 
 function updateTimer() {
