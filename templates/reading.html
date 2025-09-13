@@ -113,25 +113,6 @@
             </div>
         </div>
         
-        <!-- Navigation -->
-        <div class="card navigator-card">
-            <div class="card-body text-center">
-                <h6 class="card-title">Navigation</h6>
-                <div class="mb-3">
-                    <h4 id="timeElapsed">0:00</h4>
-                    <small>Time Elapsed</small>
-                </div>
-                <div class="mb-2">
-                    <button class="btn btn-sm btn-outline-light" id="skipBackBtn">
-                        <i class="fas fa-step-backward me-1"></i>Previous
-                    </button>
-                    <button class="btn btn-sm btn-outline-light" id="skipForwardBtn">
-                        <i class="fas fa-step-forward me-1"></i>Next
-                    </button>
-                </div>
-                <small class="text-light">Manual navigation</small>
-            </div>
-        </div>
     </div>
     
     <div class="col-lg-9">
@@ -423,14 +404,6 @@ document.addEventListener('DOMContentLoaded', function() {
             highlightCurrentWord();
             updateProgress();
         }
-    });
-    
-    document.getElementById('skipBackBtn').addEventListener('click', function() {
-        moveToWord(Math.max(0, currentIndex - 5));
-    });
-    
-    document.getElementById('skipForwardBtn').addEventListener('click', function() {
-        moveToWord(Math.min(words.length - 1, currentIndex + 5));
     });
     
     document.getElementById('micBtn').addEventListener('click', function() {
