@@ -22,6 +22,9 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 import uuid
 
+# In-memory session storage for Vercel deployment
+vercel_sessions = {}
+
 # Configure logging - Essential for debugging and monitoring in production
 logging.basicConfig(
     level=logging.INFO,
@@ -110,14 +113,6 @@ def index():
 def upload_file():
     """Handle file upload and create new reading session."""
     try:
-        # For Vercel demo, redirect to demo session
-        if os.environ.get('VERCEL'):
-            return jsonify({
-                'success': True,
-                'session_id': 'demo-session',
-                'redirect_url': url_for('reading_session', session_id='demo-session')
-            })
-            
         if 'file' not in request.files:
             return jsonify({'error': 'No file selected'}), 400
         
@@ -132,21 +127,38 @@ def upload_file():
             content = file.read().decode('utf-8')
             words = content.split()
             
-            # Create new reading session
-            session = ReadingSession(
-                filename=filename,
-                text_content=content,
-                total_words=len(words)
-            )
+            # Generate session ID
+            session_id = str(uuid.uuid4())
             
-            db.session.add(session)
-            db.session.commit()
+            # Handle storage based on environment
+            if os.environ.get('VERCEL'):
+                # Store in memory for Vercel
+                vercel_sessions[session_id] = {
+                    'id': session_id,
+                    'filename': filename,
+                    'text_content': content,
+                    'total_words': len(words),
+                    'current_word_index': 0,
+                    'created_at': datetime.utcnow()
+                }
+                logger.info(f"New Vercel file session created: {session_id}")
+            else:
+                # Store in database for local development
+                session = ReadingSession(
+                    id=session_id,
+                    filename=filename,
+                    text_content=content,
+                    total_words=len(words)
+                )
+                
+                db.session.add(session)
+                db.session.commit()
+                logger.info(f"New reading session created: {session_id}")
             
-            logger.info(f"New reading session created: {session.id}")
             return jsonify({
                 'success': True,
-                'session_id': session.id,
-                'redirect_url': url_for('reading_session', session_id=session.id)
+                'session_id': session_id,
+                'redirect_url': url_for('reading_session', session_id=session_id)
             })
         
         return jsonify({'error': 'Please upload a .txt file'}), 400
@@ -159,14 +171,6 @@ def upload_file():
 def upload_text():
     """Handle direct text input and create new reading session."""
     try:
-        # For Vercel demo, redirect to demo session
-        if os.environ.get('VERCEL'):
-            return jsonify({
-                'success': True,
-                'session_id': 'demo-session',
-                'redirect_url': url_for('reading_session', session_id='demo-session')
-            })
-            
         data = request.get_json()
         
         if not data or not data.get('text'):
@@ -184,21 +188,38 @@ def upload_text():
         if len(words) == 0:
             return jsonify({'error': 'Text must contain at least one word'}), 400
         
-        # Create new reading session
-        session = ReadingSession(
-            filename=filename,
-            text_content=text_content,
-            total_words=len(words)
-        )
+        # Generate session ID
+        session_id = str(uuid.uuid4())
         
-        db.session.add(session)
-        db.session.commit()
+        # Handle storage based on environment
+        if os.environ.get('VERCEL'):
+            # Store in memory for Vercel
+            vercel_sessions[session_id] = {
+                'id': session_id,
+                'filename': filename,
+                'text_content': text_content,
+                'total_words': len(words),
+                'current_word_index': 0,
+                'created_at': datetime.utcnow()
+            }
+            logger.info(f"New Vercel session created from pasted text: {session_id}")
+        else:
+            # Store in database for local development
+            session = ReadingSession(
+                id=session_id,
+                filename=filename,
+                text_content=text_content,
+                total_words=len(words)
+            )
+            
+            db.session.add(session)
+            db.session.commit()
+            logger.info(f"New reading session created from pasted text: {session_id}")
         
-        logger.info(f"New reading session created from pasted text: {session.id}")
         return jsonify({
             'success': True,
-            'session_id': session.id,
-            'redirect_url': url_for('reading_session', session_id=session.id)
+            'session_id': session_id,
+            'redirect_url': url_for('reading_session', session_id=session_id)
         })
         
     except Exception as e:
@@ -209,28 +230,47 @@ def upload_text():
 def reading_session(session_id):
     """Display reading interface for a specific session."""
     try:
-        # For Vercel demo, use sample text
+        # Handle different storage based on environment
         if os.environ.get('VERCEL'):
-            sample_text = "The quick brown fox jumps over the lazy dog. This is a sample text for demonstration purposes. You can practice reading this text with speech recognition."
-            words = sample_text.split()
-            session = type('obj', (object,), {
-                'id': 'demo-session',
-                'filename': 'Demo Text',
-                'text_content': sample_text,
-                'total_words': len(words)
-            })
+            # Check in-memory storage first
+            if session_id in vercel_sessions:
+                session_data = vercel_sessions[session_id]
+                words = session_data['text_content'].split()
+                # Create session-like object
+                session = type('obj', (object,), {
+                    'id': session_data['id'],
+                    'filename': session_data['filename'],
+                    'text_content': session_data['text_content'],
+                    'total_words': session_data['total_words'],
+                    'current_word_index': session_data.get('current_word_index', 0)
+                })
+                return render_template('reading.html', 
+                                 session=session, 
+                                 words=words,
+                                 current_index=session.current_word_index)
+            else:
+                # Fallback to demo session if session not found
+                sample_text = "The quick brown fox jumps over the lazy dog. This is a sample text for demonstration purposes. You can practice reading this text with speech recognition."
+                words = sample_text.split()
+                session = type('obj', (object,), {
+                    'id': 'demo-session',
+                    'filename': 'Demo Text',
+                    'text_content': sample_text,
+                    'total_words': len(words)
+                })
+                return render_template('reading.html', 
+                                 session=session, 
+                                 words=words,
+                                 current_index=0)
+        else:
+            # Use database for local development
+            session = ReadingSession.query.get_or_404(session_id)
+            words = session.text_content.split()
+            
             return render_template('reading.html', 
-                             session=session, 
-                             words=words,
-                             current_index=0)
-        
-        session = ReadingSession.query.get_or_404(session_id)
-        words = session.text_content.split()
-        
-        return render_template('reading.html', 
-                             session=session, 
-                             words=words,
-                             current_index=session.current_word_index)
+                                 session=session, 
+                                 words=words,
+                                 current_index=session.current_word_index)
     except Exception as e:
         logger.error(f"Error loading reading session {session_id}: {str(e)}")
         return render_template('error.html', error="Session not found"), 404
