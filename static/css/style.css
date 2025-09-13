@@ -287,28 +287,33 @@ body {
     background-color: #f8f9fa;
 }
 
-/* Progress bars */
+/* Progress bars - Override Bootstrap */
 .progress {
-    height: 24px;
-    border-radius: 6px;
-    background-color: #e9ecef;
-    overflow: hidden;
-    position: relative;
+    height: 24px !important;
+    border-radius: 6px !important;
+    background-color: #e9ecef !important;
+    overflow: hidden !important;
+    position: relative !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
 .progress-bar {
-    background-color: var(--primary-color);
-    color: white;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 600;
-    border-radius: 0;
-    transition: width 0.6s ease;
-    min-width: 0;
-    line-height: 1;
+    background-color: var(--primary-color) !important;
+    color: white !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border-radius: 0 !important;
+    transition: width 0.6s ease !important;
+    min-width: 0 !important;
+    line-height: 1 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background-image: none !important;
 }
 
 /* Feature icons */
