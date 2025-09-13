@@ -5,7 +5,7 @@ A Flask web application for reading practice with speech recognition.
 
 import os
 import logging
-from flask import Flask, render_template, request, jsonify, url_for
+from flask import Flask, render_template, request, jsonify, url_for, redirect
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -204,18 +204,8 @@ def reading_session(session_id):
                                  words=words,
                                  current_index=session.current_word_index)
             else:
-                sample_text = "The quick brown fox jumps over the lazy dog. This is a sample text for demonstration purposes. You can practice reading this text with speech recognition."
-                words = sample_text.split()
-                session = type('obj', (object,), {
-                    'id': 'demo-session',
-                    'filename': 'Demo Text',
-                    'text_content': sample_text,
-                    'total_words': len(words)
-                })
-                return render_template('reading.html', 
-                                 session=session, 
-                                 words=words,
-                                 current_index=0)
+                # Session not found, redirect to home
+                return redirect(url_for('index'))
         else:
             session = ReadingSession.query.get_or_404(session_id)
             words = session.text_content.split()

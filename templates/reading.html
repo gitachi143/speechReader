@@ -368,13 +368,7 @@ function updateProgress() {
 }
 
 function updateTimer() {
-    if (startTime) {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60);
-        const seconds = elapsed % 60;
-        document.getElementById('timeElapsed').textContent = 
-            `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
+    // Timer functionality removed with navigation
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -412,7 +406,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     highlightCurrentWord();
-    setInterval(updateTimer, 1000);
+    updateProgress();
 });
 </script>
 {% endblock %} 
