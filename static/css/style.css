@@ -287,8 +287,8 @@ body {
     background-color: #f8f9fa;
 }
 
-/* Progress bars - Override Bootstrap */
-.progress {
+/* Reading page progress bar only */
+.card-body .progress {
     height: 24px !important;
     border-radius: 6px !important;
     background-color: #e9ecef !important;
@@ -296,24 +296,29 @@ body {
     position: relative !important;
     border: none !important;
     box-shadow: none !important;
+    display: flex !important;
+    align-items: center !important;
 }
 
-.progress-bar {
+.card-body .progress-bar {
     background-color: var(--primary-color) !important;
     color: white !important;
-    height: 100% !important;
+    height: 24px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     font-size: 13px !important;
     font-weight: 600 !important;
-    border-radius: 0 !important;
+    border-radius: 6px !important;
     transition: width 0.6s ease !important;
-    min-width: 0 !important;
+    min-width: 30px !important;
     line-height: 1 !important;
     border: none !important;
     box-shadow: none !important;
     background-image: none !important;
+    position: relative !important;
+    top: 0 !important;
+    margin: 0 !important;
 }
 
 /* Feature icons */
