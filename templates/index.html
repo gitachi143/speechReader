@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Reading Practice{% endblock %}
+{% block title %}Speech Reading Assistant{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="main-header">
-                <h2>Reading Practice</h2>
-                <p>Practice reading aloud with speech recognition feedback</p>
+                <h2>Speech Reading Assistant</h2>
+                <p>This tool helps you stay on track while delivering your speech.</p>
             </div>
 
             <div class="input-section">
@@ -19,8 +19,8 @@
 
                 <div id="text-input" class="input-panel active">
                     <form id="pasteForm">
-                        <textarea id="textInput" name="text" placeholder="Enter or paste text to practice reading..." required></textarea>
-                        <button type="submit" id="pasteBtn">Start Practice</button>
+                        <textarea id="textInput" name="text" placeholder="Enter or paste your speech text here..." required></textarea>
+                        <button type="submit" id="pasteBtn">Start Speech</button>
                     </form>
                 </div>
 
@@ -37,6 +37,14 @@
                 <div id="progress" class="progress-bar" style="display: none;">
                     <div class="progress-fill">Processing...</div>
                 </div>
+            </div>
+
+            <div class="features-info">
+                <ul>
+                    <li>Words highlight automatically as you speak, helping you maintain proper pacing</li>
+                    <li>Voice recognition follows your speech and advances the text in real-time</li>
+                    <li>Perfect for practicing presentations, speeches, or any text you need to read aloud</li>
+                </ul>
             </div>
 
             {% if recent_sessions %}
@@ -118,7 +126,7 @@ document.getElementById('pasteForm').addEventListener('submit', function(e) {
     })
     .finally(() => {
         pasteBtn.disabled = false;
-        pasteBtn.textContent = 'Start Practice';
+        pasteBtn.textContent = 'Start Speech';
         progress.style.display = 'none';
     });
 });

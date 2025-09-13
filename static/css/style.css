@@ -209,6 +209,36 @@
     text-decoration: none;
 }
 
+.features-info {
+    margin: 30px 0 40px 0;
+    padding: 25px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.features-info ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.features-info li {
+    padding: 8px 0;
+    color: #555;
+    font-size: 15px;
+    line-height: 1.5;
+    position: relative;
+    padding-left: 20px;
+}
+
+.features-info li:before {
+    content: "•";
+    color: var(--primary-color);
+    position: absolute;
+    left: 0;
+    font-size: 18px;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f5f5f5;
