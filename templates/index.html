@@ -1,163 +1,66 @@
 {% extends "base.html" %}
 
-{% block title %}Home - Text Reading Assistant{% endblock %}
+{% block title %}Reading Practice{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-lg-8 mx-auto">
-        <!-- Hero Section -->
-        <div class="text-center mb-5">
-            <h1 class="display-4 text-primary">
-                <i class="fas fa-book-reader me-3"></i>Text Reading Assistant
-            </h1>
-            <p class="lead text-muted">
-                Practice reading with speech recognition and real-time text highlighting.
-            </p>
-        </div>
-
-        <!-- Text Input Section -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-primary text-white">
-                <h3 class="card-title mb-0">
-                    <i class="fas fa-keyboard me-2"></i>Create Session
-                </h3>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="main-header">
+                <h2>Reading Practice</h2>
+                <p>Practice reading aloud with speech recognition feedback</p>
             </div>
-            <div class="card-body">
-                <!-- Tab Navigation -->
-                <ul class="nav nav-tabs mb-3" id="inputTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="paste-tab" data-bs-toggle="tab" data-bs-target="#paste-pane" type="button" role="tab">
-                            <i class="fas fa-paste me-2"></i>Paste Text
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-pane" type="button" role="tab">
-                            <i class="fas fa-upload me-2"></i>Upload File
-                        </button>
-                    </li>
-                </ul>
 
-                <!-- Tab Content -->
-                <div class="tab-content" id="inputTabContent">
-                    <!-- Paste Text Tab -->
-                    <div class="tab-pane fade show active" id="paste-pane" role="tabpanel">
-                        <form id="pasteForm">
-                            <div class="mb-3">
-                                <label for="textInput" class="form-label">Enter text:</label>
-                                <textarea class="form-control" id="textInput" name="text" rows="8" 
-                                         placeholder="Paste or type your text here..." required></textarea>
-                                <div class="form-text">
-                                    Text will be highlighted word by word during reading practice.
-                                </div>
-                            </div>
-                            
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg" id="pasteBtn">
-                                    <i class="fas fa-play me-2"></i>Start Session
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Upload File Tab -->
-                    <div class="tab-pane fade" id="upload-pane" role="tabpanel">
-                        <form id="uploadForm" enctype="multipart/form-data">
-                            <div class="mb-3">
-                                <label for="fileInput" class="form-label">Choose a text file (.txt)</label>
-                                <input type="file" class="form-control" id="fileInput" name="file" accept=".txt">
-                                <div class="form-text">
-                                    Maximum file size: 16MB. Only .txt files are supported.
-                                </div>
-                            </div>
-                            
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg" id="uploadBtn">
-                                    <i class="fas fa-cloud-upload-alt me-2"></i>Upload File
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+            <div class="input-section">
+                <div class="input-options">
+                    <button class="option-btn active" data-target="text-input">Text</button>
+                    <button class="option-btn" data-target="file-input">File</button>
                 </div>
+
+                <div id="text-input" class="input-panel active">
+                    <form id="pasteForm">
+                        <textarea id="textInput" name="text" placeholder="Enter or paste text to practice reading..." required></textarea>
+                        <button type="submit" id="pasteBtn">Start Practice</button>
+                    </form>
+                </div>
+
+                <div id="file-input" class="input-panel">
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="file-upload">
+                            <input type="file" id="fileInput" name="file" accept=".txt">
+                            <label for="fileInput">Choose .txt file</label>
+                        </div>
+                        <button type="submit" id="uploadBtn">Upload & Start</button>
+                    </form>
+                </div>
+
+                <div id="progress" class="progress-bar" style="display: none;">
+                    <div class="progress-fill">Processing...</div>
+                </div>
+            </div>
+
+            {% if recent_sessions %}
+                {% set has_sessions = false %}
+                {% for session in recent_sessions %}
+                    {% set has_sessions = true %}
+                {% endfor %}
                 
-                <!-- Progress -->
-                <div id="progress" class="mt-3" style="display: none;">
-                    <div class="progress">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                             role="progressbar" style="width: 100%">
-                            Processing...
+                {% if has_sessions %}
+                <div class="recent-sessions">
+                    <h3>Recent Sessions</h3>
+                    {% for session in recent_sessions %}
+                    <div class="session-item">
+                        <div class="session-info">
+                            <span class="session-name">{{ session.filename }}</span>
+                            <span class="session-date">{{ session.created_at.strftime('%m/%d %H:%M') }}</span>
+                            <span class="session-progress">{{ session.current_word_index }}/{{ session.total_words }} words</span>
                         </div>
+                        <a href="{{ url_for('reading_session', session_id=session.id) }}" class="continue-btn">Continue</a>
                     </div>
+                    {% endfor %}
                 </div>
-            </div>
-        </div>
-
-        <!-- Recent Sessions -->
-        {% if recent_sessions %}
-            {% set has_sessions = false %}
-            {% for session in recent_sessions %}
-                {% set has_sessions = true %}
-            {% endfor %}
-            
-            {% if has_sessions %}
-            <div class="card shadow-sm">
-                <div class="card-header bg-secondary text-white">
-                    <h3 class="card-title mb-0">
-                        <i class="fas fa-history me-2"></i>Recent Sessions
-                    </h3>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        {% for session in recent_sessions %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">
-                                    <i class="fas fa-file-text me-2 text-muted"></i>{{ session.filename }}
-                                </h6>
-                                <small class="text-muted">
-                                    <i class="fas fa-calendar me-1"></i>
-                                    {{ session.created_at.strftime('%Y-%m-%d %H:%M') }}
-                                </small>
-                                <div class="mt-1">
-                                    <small class="text-info">
-                                        Progress: {{ session.current_word_index }}/{{ session.total_words }} words
-                                        ({{ "%.1f"|format(((session.current_word_index + 1) / session.total_words * 100) if session.total_words > 0 else 0) }}%)
-                                    </small>
-                                </div>
-                            </div>
-                            <div>
-                                <a href="{{ url_for('reading_session', session_id=session.id) }}" 
-                                   class="btn btn-outline-primary btn-sm">
-                                    <i class="fas fa-play me-1"></i>Continue
-                                </a>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
+                {% endif %}
             {% endif %}
-        {% endif %}
-
-        <!-- Features Section -->
-        <div class="mt-5">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <ul class="list-unstyled mb-0">
-                        <li class="mb-3">
-                            <h5 class="mb-2"><i class="fas fa-circle text-primary me-2" style="font-size: 0.5rem;"></i>Text Highlighting</h5>
-                            <p class="text-muted mb-0 ms-3">Words highlight automatically as you read through the text.</p>
-                        </li>
-                        <li class="mb-3">
-                            <h5 class="mb-2"><i class="fas fa-circle text-primary me-2" style="font-size: 0.5rem;"></i>Speech Recognition</h5>
-                            <p class="text-muted mb-0 ms-3">Voice recognition follows your reading progress.</p>
-                        </li>
-                        <li class="mb-0">
-                            <h5 class="mb-2"><i class="fas fa-circle text-primary me-2" style="font-size: 0.5rem;"></i>Session Tracking</h5>
-                            <p class="text-muted mb-0 ms-3">Track reading progress and session statistics.</p>
-                        </li>
-                    </ul>
-                </div>
-            </div>
         </div>
     </div>
 </div>
@@ -165,7 +68,18 @@
 
 {% block extra_scripts %}
 <script>
-// Handle text paste form
+// Simple tab switching
+document.querySelectorAll('.option-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.input-panel').forEach(p => p.classList.remove('active'));
+        
+        this.classList.add('active');
+        document.getElementById(this.dataset.target).classList.add('active');
+    });
+});
+
+// Text form handler
 document.getElementById('pasteForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -174,24 +88,20 @@ document.getElementById('pasteForm').addEventListener('submit', function(e) {
     const progress = document.getElementById('progress');
     
     if (!textInput.value.trim()) {
-        alert('Please paste some text first.');
+        alert('Please enter some text first.');
         return;
     }
     
-    // Show progress
     pasteBtn.disabled = true;
-    pasteBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+    pasteBtn.textContent = 'Processing...';
     progress.style.display = 'block';
     
-    // Send text directly to create session
     fetch('/upload-text', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             text: textInput.value.trim(),
-            filename: 'Pasted Text'
+            filename: 'Text Input'
         })
     })
     .then(response => response.json())
@@ -203,21 +113,20 @@ document.getElementById('pasteForm').addEventListener('submit', function(e) {
         }
     })
     .catch(error => {
-        console.error('Text processing error:', error);
-        alert('Failed to process text. Please try again.');
+        console.error('Error:', error);
+        alert('Failed to process text.');
     })
     .finally(() => {
         pasteBtn.disabled = false;
-        pasteBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Session';
+        pasteBtn.textContent = 'Start Practice';
         progress.style.display = 'none';
     });
 });
 
-// Handle file upload form
+// File form handler
 document.getElementById('uploadForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    const formData = new FormData();
     const fileInput = document.getElementById('fileInput');
     const uploadBtn = document.getElementById('uploadBtn');
     const progress = document.getElementById('progress');
@@ -227,11 +136,11 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
         return;
     }
     
+    const formData = new FormData();
     formData.append('file', fileInput.files[0]);
     
-    // Show progress
     uploadBtn.disabled = true;
-    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Uploading...';
+    uploadBtn.textContent = 'Uploading...';
     progress.style.display = 'block';
     
     fetch('/upload', {
@@ -247,12 +156,12 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
         }
     })
     .catch(error => {
-        console.error('Upload error:', error);
-        alert('Upload failed. Please try again.');
+        console.error('Error:', error);
+        alert('Upload failed.');
     })
     .finally(() => {
         uploadBtn.disabled = false;
-        uploadBtn.innerHTML = '<i class="fas fa-cloud-upload-alt me-2"></i>Upload File';
+        uploadBtn.textContent = 'Upload & Start';
         progress.style.display = 'none';
     });
 });
