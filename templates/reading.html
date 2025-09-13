@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Speech Navigator: {{ session.filename }}{% endblock %}
+{% block title %}Reading: {{ session.filename }}{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -113,10 +113,10 @@
             </div>
         </div>
         
-        <!-- Speech Navigator -->
+        <!-- Navigation -->
         <div class="card navigator-card">
             <div class="card-body text-center">
-                <h6 class="card-title">Speech Navigator</h6>
+                <h6 class="card-title">Navigation</h6>
                 <div class="mb-3">
                     <h4 id="timeElapsed">0:00</h4>
                     <small>Time Elapsed</small>
@@ -137,7 +137,7 @@
     <div class="col-lg-9">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">Speech Text</h5>
+                <h5 class="mb-0">Text</h5>
             </div>
             <div class="card-body">
                 <div class="reading-text" id="readingText">

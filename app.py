@@ -1,58 +1,36 @@
 """
-Text Reading Assistant - Main Application
-=========================================
-
-A Flask web application that helps users read text with real-time highlighting
-and speech recognition to track reading progress.
-
-This follows enterprise-level Flask application structure with:
-- Configuration management
-- Database models
-- Error handling
-- Logging
-- RESTful API design
+Text Reading Assistant
+A Flask web application for reading practice with speech recognition.
 """
 
 import os
 import logging
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import uuid
 
-# In-memory session storage for Vercel deployment
 vercel_sessions = {}
 
-# Configure logging - Essential for debugging and monitoring in production
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(name)s %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
 
-# Initialize Flask app
 app = Flask(__name__)
-
-# Configuration - Following 12-factor app principles
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-prod')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///reading_assistant.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# Initialize extensions
 db = SQLAlchemy(app)
-CORS(app)  # Enable CORS for frontend-backend communication
+CORS(app)
 
-# Ensure upload directory exists (only in development)
 if not os.environ.get('VERCEL'):
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Database Models - Following SQLAlchemy best practices
 class ReadingSession(db.Model):
-    """Model to store reading session data."""
     __tablename__ = 'reading_sessions'
     
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -63,11 +41,9 @@ class ReadingSession(db.Model):
     total_words = db.Column(db.Integer, nullable=False)
     current_word_index = db.Column(db.Integer, default=0)
     
-    # Relationship to reading progress
     progress_entries = db.relationship('ReadingProgress', backref='session', lazy=True)
     
     def to_dict(self):
-        """Convert model to dictionary for JSON serialization."""
         return {
             'id': self.id,
             'filename': self.filename,
@@ -79,7 +55,6 @@ class ReadingSession(db.Model):
         }
 
 class ReadingProgress(db.Model):
-    """Model to track detailed reading progress and errors."""
     __tablename__ = 'reading_progress'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -89,20 +64,15 @@ class ReadingProgress(db.Model):
     spoken_word = db.Column(db.String(100))
     is_correct = db.Column(db.Boolean, default=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    confidence_score = db.Column(db.Float)  # Speech recognition confidence
-
-# Routes - Following RESTful conventions
+    confidence_score = db.Column(db.Float)
 
 @app.route('/')
 def index():
-    """Main page - Upload and select text files."""
     try:
-        # Skip database operations on Vercel
         if os.environ.get('VERCEL'):
             return render_template('index.html', recent_sessions=[])
         
         recent_sessions = ReadingSession.query.order_by(ReadingSession.created_at.desc()).limit(5).all()
-        # Only pass sessions if there are any
         sessions_to_show = recent_sessions if recent_sessions else []
         return render_template('index.html', recent_sessions=sessions_to_show)
     except Exception as e:
@@ -111,7 +81,6 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    """Handle file upload and create new reading session."""
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file selected'}), 400
@@ -127,12 +96,9 @@ def upload_file():
             content = file.read().decode('utf-8')
             words = content.split()
             
-            # Generate session ID
             session_id = str(uuid.uuid4())
             
-            # Handle storage based on environment
             if os.environ.get('VERCEL'):
-                # Store in memory for Vercel
                 vercel_sessions[session_id] = {
                     'id': session_id,
                     'filename': filename,
@@ -141,9 +107,8 @@ def upload_file():
                     'current_word_index': 0,
                     'created_at': datetime.utcnow()
                 }
-                logger.info(f"New Vercel file session created: {session_id}")
+                logger.info(f"Created Vercel session: {session_id}")
             else:
-                # Store in database for local development
                 session = ReadingSession(
                     id=session_id,
                     filename=filename,
@@ -153,7 +118,7 @@ def upload_file():
                 
                 db.session.add(session)
                 db.session.commit()
-                logger.info(f"New reading session created: {session_id}")
+                logger.info(f"Created session: {session_id}")
             
             return jsonify({
                 'success': True,
@@ -169,7 +134,6 @@ def upload_file():
 
 @app.route('/upload-text', methods=['POST'])
 def upload_text():
-    """Handle direct text input and create new reading session."""
     try:
         data = request.get_json()
         
@@ -182,18 +146,14 @@ def upload_text():
         if not text_content:
             return jsonify({'error': 'Text cannot be empty'}), 400
         
-        # Split into words and count
         words = text_content.split()
         
         if len(words) == 0:
             return jsonify({'error': 'Text must contain at least one word'}), 400
         
-        # Generate session ID
         session_id = str(uuid.uuid4())
         
-        # Handle storage based on environment
         if os.environ.get('VERCEL'):
-            # Store in memory for Vercel
             vercel_sessions[session_id] = {
                 'id': session_id,
                 'filename': filename,
@@ -202,9 +162,8 @@ def upload_text():
                 'current_word_index': 0,
                 'created_at': datetime.utcnow()
             }
-            logger.info(f"New Vercel session created from pasted text: {session_id}")
+            logger.info(f"Created Vercel text session: {session_id}")
         else:
-            # Store in database for local development
             session = ReadingSession(
                 id=session_id,
                 filename=filename,
@@ -214,7 +173,7 @@ def upload_text():
             
             db.session.add(session)
             db.session.commit()
-            logger.info(f"New reading session created from pasted text: {session_id}")
+            logger.info(f"Created text session: {session_id}")
         
         return jsonify({
             'success': True,
@@ -228,15 +187,11 @@ def upload_text():
 
 @app.route('/session/<session_id>')
 def reading_session(session_id):
-    """Display reading interface for a specific session."""
     try:
-        # Handle different storage based on environment
         if os.environ.get('VERCEL'):
-            # Check in-memory storage first
             if session_id in vercel_sessions:
                 session_data = vercel_sessions[session_id]
                 words = session_data['text_content'].split()
-                # Create session-like object
                 session = type('obj', (object,), {
                     'id': session_data['id'],
                     'filename': session_data['filename'],
@@ -249,7 +204,6 @@ def reading_session(session_id):
                                  words=words,
                                  current_index=session.current_word_index)
             else:
-                # Fallback to demo session if session not found
                 sample_text = "The quick brown fox jumps over the lazy dog. This is a sample text for demonstration purposes. You can practice reading this text with speech recognition."
                 words = sample_text.split()
                 session = type('obj', (object,), {
@@ -263,7 +217,6 @@ def reading_session(session_id):
                                  words=words,
                                  current_index=0)
         else:
-            # Use database for local development
             session = ReadingSession.query.get_or_404(session_id)
             words = session.text_content.split()
             
@@ -277,11 +230,9 @@ def reading_session(session_id):
 
 @app.route('/api/sessions/<session_id>/progress', methods=['POST'])
 def update_progress(session_id):
-    """API endpoint to update reading progress."""
     try:
-        # Skip database operations on Vercel
         if os.environ.get('VERCEL'):
-            return jsonify({'error': 'Progress tracking not available on Vercel deployment'}), 400
+            return jsonify({'error': 'Progress tracking not available'}), 400
             
         data = request.get_json()
         session_id = data.get('session_id')
@@ -291,14 +242,10 @@ def update_progress(session_id):
         confidence = data.get('confidence', 0.0)
         
         session = ReadingSession.query.get_or_404(session_id)
-        
-        # Update session progress
         session.current_word_index = word_index
         
-        # Check if word matches (fuzzy matching for common variations)
         is_correct = _words_match(spoken_word.lower(), expected_word.lower())
         
-        # Record progress entry
         progress = ReadingProgress(
             session_id=session_id,
             word_index=word_index,
@@ -323,24 +270,20 @@ def update_progress(session_id):
 
 @app.route('/api/sessions/<session_id>/complete', methods=['POST'])
 def complete_session(session_id):
-    """Mark a reading session as completed."""
     try:
-        # Skip database operations on Vercel
         if os.environ.get('VERCEL'):
-            return jsonify({'error': 'Session completion not available on Vercel deployment'}), 400
+            return jsonify({'error': 'Session completion not available'}), 400
             
         session = ReadingSession.query.get_or_404(session_id)
         session.completed_at = datetime.utcnow()
         db.session.commit()
         
-        # Calculate session statistics
         correct_words = ReadingProgress.query.filter_by(
             session_id=session_id, 
             is_correct=True
         ).count()
         
         total_attempts = ReadingProgress.query.filter_by(session_id=session_id).count()
-        
         accuracy = (correct_words / total_attempts * 100) if total_attempts > 0 else 0
         
         return jsonify({
@@ -358,23 +301,17 @@ def complete_session(session_id):
         return jsonify({'error': 'Failed to complete session'}), 500
 
 def _words_match(spoken, expected):
-    """
-    Fuzzy word matching to handle common speech recognition errors.
-    This can be enhanced with more sophisticated matching algorithms.
-    """
     if spoken == expected:
         return True
     
-    # Handle common variations
     variations = [
-        spoken.replace('ing', 'in'),  # "running" vs "runnin"
-        spoken.replace('ed', 'd'),    # "walked" vs "walkd"
-        spoken.replace('th', 'f'),    # "three" vs "free"
+        spoken.replace('ing', 'in'),
+        spoken.replace('ed', 'd'),
+        spoken.replace('th', 'f'),
     ]
     
     return expected in variations
 
-# Error handlers - Professional error handling
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('error.html', error="Page not found"), 404
@@ -384,21 +321,16 @@ def internal_error(error):
     db.session.rollback()
     return render_template('error.html', error="Internal server error"), 500
 
-# Database initialization
 def create_tables():
-    """Create database tables."""
     with app.app_context():
         try:
             db.create_all()
-            logger.info("Database tables created successfully")
+            logger.info("Database tables created")
         except Exception as e:
-            logger.warning(f"Database initialization warning: {str(e)}")
-            # Continue without database in serverless environment
+            logger.warning(f"Database init warning: {str(e)}")
 
-# Initialize database (only in development)
 if not os.environ.get('VERCEL'):
     create_tables()
 
 if __name__ == '__main__':
-    # Development server - Never use in production
     app.run(debug=True, host='0.0.0.0', port=5001) 

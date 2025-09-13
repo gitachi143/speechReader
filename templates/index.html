@@ -11,11 +11,7 @@
                 <i class="fas fa-book-reader me-3"></i>Text Reading Assistant
             </h1>
             <p class="lead text-muted">
-                {% if config.get('VERCEL') %}
-                    Demo version: Try the speech recognition with sample text. Upload and save features are disabled on this deployment.
-                {% else %}
-                    Upload text files and read with real-time highlighting and speech recognition feedback.
-                {% endif %}
+                Practice reading with speech recognition and real-time text highlighting.
             </p>
         </div>
 
@@ -23,7 +19,7 @@
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white">
                 <h3 class="card-title mb-0">
-                    <i class="fas fa-keyboard me-2"></i>Start Reading Session
+                    <i class="fas fa-keyboard me-2"></i>Create Session
                 </h3>
             </div>
             <div class="card-body">
@@ -47,20 +43,17 @@
                     <div class="tab-pane fade show active" id="paste-pane" role="tabpanel">
                         <form id="pasteForm">
                             <div class="mb-3">
-                                <label for="textInput" class="form-label">Paste your text here:</label>
+                                <label for="textInput" class="form-label">Enter text:</label>
                                 <textarea class="form-control" id="textInput" name="text" rows="8" 
-                                         placeholder="Paste any text you want to read... 
-
-For example:
-The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet at least once. Reading practice helps improve fluency and comprehension skills." required></textarea>
+                                         placeholder="Paste or type your text here..." required></textarea>
                                 <div class="form-text">
-                                    Paste any text you want to read. The text will be split into individual words for highlighting.
+                                    Text will be highlighted word by word during reading practice.
                                 </div>
                             </div>
                             
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-primary btn-lg" id="pasteBtn">
-                                    <i class="fas fa-play me-2"></i>{% if config.get('VERCEL') %}Try Demo{% else %}Start Reading Session{% endif %}
+                                    <i class="fas fa-play me-2"></i>Start Session
                                 </button>
                             </div>
                         </form>
@@ -79,7 +72,7 @@ The quick brown fox jumps over the lazy dog. This sentence contains every letter
                             
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-primary btn-lg" id="uploadBtn">
-                                    <i class="fas fa-cloud-upload-alt me-2"></i>{% if config.get('VERCEL') %}Try Demo{% else %}Upload & Start Reading{% endif %}
+                                    <i class="fas fa-cloud-upload-alt me-2"></i>Upload File
                                 </button>
                             </div>
                         </form>
@@ -109,7 +102,7 @@ The quick brown fox jumps over the lazy dog. This sentence contains every letter
             <div class="card shadow-sm">
                 <div class="card-header bg-secondary text-white">
                     <h3 class="card-title mb-0">
-                        <i class="fas fa-history me-2"></i>Recent Speech Sessions
+                        <i class="fas fa-history me-2"></i>Recent Sessions
                     </h3>
                 </div>
                 <div class="card-body">
@@ -151,16 +144,16 @@ The quick brown fox jumps over the lazy dog. This sentence contains every letter
                 <div class="card-body">
                     <ul class="list-unstyled mb-0">
                         <li class="mb-3">
-                            <h5 class="mb-2"><i class="fas fa-circle text-primary me-2" style="font-size: 0.5rem;"></i>Real-time Highlighting</h5>
-                            <p class="text-muted mb-0 ms-3">Words are highlighted as you progress through the text, keeping you focused and on track.</p>
+                            <h5 class="mb-2"><i class="fas fa-circle text-primary me-2" style="font-size: 0.5rem;"></i>Text Highlighting</h5>
+                            <p class="text-muted mb-0 ms-3">Words highlight automatically as you read through the text.</p>
                         </li>
                         <li class="mb-3">
                             <h5 class="mb-2"><i class="fas fa-circle text-primary me-2" style="font-size: 0.5rem;"></i>Speech Recognition</h5>
-                            <p class="text-muted mb-0 ms-3">Advanced speech recognition tracks your reading and provides instant feedback on accuracy.</p>
+                            <p class="text-muted mb-0 ms-3">Voice recognition follows your reading progress.</p>
                         </li>
                         <li class="mb-0">
-                            <h5 class="mb-2"><i class="fas fa-circle text-primary me-2" style="font-size: 0.5rem;"></i>Progress Tracking</h5>
-                            <p class="text-muted mb-0 ms-3">Detailed analytics help you understand your reading patterns and improve over time.</p>
+                            <h5 class="mb-2"><i class="fas fa-circle text-primary me-2" style="font-size: 0.5rem;"></i>Session Tracking</h5>
+                            <p class="text-muted mb-0 ms-3">Track reading progress and session statistics.</p>
                         </li>
                     </ul>
                 </div>
@@ -215,7 +208,7 @@ document.getElementById('pasteForm').addEventListener('submit', function(e) {
     })
     .finally(() => {
         pasteBtn.disabled = false;
-        pasteBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Reading Session';
+        pasteBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Session';
         progress.style.display = 'none';
     });
 });
@@ -259,7 +252,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     })
     .finally(() => {
         uploadBtn.disabled = false;
-        uploadBtn.innerHTML = '<i class="fas fa-cloud-upload-alt me-2"></i>Upload & Start Reading';
+        uploadBtn.innerHTML = '<i class="fas fa-cloud-upload-alt me-2"></i>Upload File';
         progress.style.display = 'none';
     });
 });
